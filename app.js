@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
-
+const encrypt = require('mongoose-encryption');
 const app = express();
 
 app.use(express.static('public'));
@@ -21,10 +21,16 @@ const dbConnectionUrl = "mongodb://localhost:27017/"+dbName;
 mongoose.connect(dbConnectionUrl, {useNewUrlParser:true, useUnifiedTopology:true});
 
 // User Schema
-const userSchema = {
+const userSchema = new mongoose.Schema({
     email:{type:String,required:true},
     password:{type:String,required:true}
-} 
+}); 
+
+// secret for encryption-(will be hidden in future and also be changed)
+const encryptSecret = "!sekret@shifrovani%yamangusta#";
+
+// encrypt plugin for mongoose schema
+userSchema.plugin(encrypt,{secret:encryptSecret,encryptedFields:["password"]});
 
 // User Model
 const User = mongoose.model("User",userSchema);
@@ -56,7 +62,7 @@ app.post("/register",(req,res)=>{
     // save new user into DB
     newUser.save((err)=>{
         if(err) console.log(err);
-        else res.render("/secrets");
+        else res.render("secrets");
     });
 });
 
