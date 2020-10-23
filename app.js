@@ -4,7 +4,8 @@ const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
 const app = express();
-const md5 = require('md5');
+const bcrypt = require('bcrypt');
+const saltRounds = Number(process.env.SALT_ROUNDS);
 
 app.use(express.static('public'));
 app.set('view engine','ejs');
@@ -47,37 +48,40 @@ app.get("/register",(req,res)=>{
 
 // register post route - New User Registration
 app.post("/register",(req,res)=>{
+
     const userEmail = req.body.username;
-    const userPassword = md5(req.body.password);
+    const userPassword = req.body.password;
     // new user
-    const newUser = new User({
-        email:userEmail,
-        password:userPassword
-    });
-    // save new user into DB
-    newUser.save((err)=>{
+    bcrypt.hash(userPassword,saltRounds,(err,hash)=>{
         if(err) console.log(err);
-        else res.render("secrets");
+        const newUser = new User({
+            email:userEmail,
+            password:hash
+        });
+        // save new user into DB
+        newUser.save((err)=>{
+            if(err) console.log(err);
+            else res.render("secrets");
+        });
     });
 });
 
 // login post route - User Login
 app.post("/login",(req,res)=>{
     const userEmail = req.body.username;
-    const userPassword = md5(req.body.password);
+    const userPassword = req.body.password;
     // check for the user in DB
     User.findOne({email:userEmail},(err,resultUser)=>{
         if(err) console.log(err)
         else{
             if(resultUser){ 
-                if(resultUser.password === userPassword)
-                    res.render("secrets");
-                else 
-                    res.redirect("/login"); 
+                bcrypt.compare(userPassword,resultUser.password,(err,result)=>{
+                    (result)?res.render("secrets"): res.redirect("/login");
+                });  
             }
         }
-    })
-})
+    });
+});
 
 app.listen(process.env.PORT || 3000,()=>{
     console.log("Server is Up and Running.");
